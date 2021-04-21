@@ -1,3 +1,7 @@
+import org.gradle.work.ChangeType
+import org.gradle.work.FileChange
+import org.gradle.work.InputChanges
+
 plugins {
     id 'java'
 }
@@ -16,4 +20,40 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+
+// ----- Important stuff -----
+
+tasks.create("fail", Fail, {
+    getSource().from(sourceSets.main.output)
+    getOutput().set(project.layout.buildDirectory.file("addedAndRemoved"))
+})
+assemble.dependsOn("fail")
+
+abstract class Fail extends DefaultTask {
+
+    @InputFiles
+    @Classpath
+//	@PathSensitive(PathSensitivity.RELATIVE)
+    @SkipWhenEmpty
+    abstract ConfigurableFileCollection getSource();
+
+    @OutputFile
+    abstract RegularFileProperty getOutput();
+
+    @TaskAction
+    void work(InputChanges inputChanges) {
+        String out;
+        if (!inputChanges.incremental)
+            out = "non-incremental execution, try again!"
+        else {
+            Set<FileChange> changes = inputChanges.getFileChanges(getSource()).toSet()
+            Set<FileChange> addedAndRemoved = changes.findAll { added -> added.changeType == ChangeType.ADDED && changes.find { removed -> removed.changeType == ChangeType.REMOVED && removed.normalizedPath == added.normalizedPath } }
+            out = "changes added and removed: \n\t${addedAndRemoved.collect { it.normalizedPath }.join("\n\t")}"
+        }
+        logger.log(LogLevel.WARN, out);
+        getOutput().get().asFile.write(out);
+    }
+
 }
