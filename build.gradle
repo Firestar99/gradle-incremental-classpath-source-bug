@@ -2,34 +2,39 @@ import org.gradle.work.ChangeType
 import org.gradle.work.FileChange
 import org.gradle.work.InputChanges
 
-plugins {
-    id 'java'
+allprojects {
+    apply plugin: 'java'
+
+    group 'org.example'
+    version '1.0-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+        testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+    }
+
+    test {
+        useJUnitPlatform()
+    }
 }
 
-group 'org.example'
-version '1.0-SNAPSHOT'
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
-}
-
-test {
-    useJUnitPlatform()
-}
 
 
 // ----- Important stuff -----
 
-tasks.create("fail", Fail, {
-    getSource().from(sourceSets.main.output)
-    getOutput().set(project.layout.buildDirectory.file("addedAndRemoved"))
-})
-assemble.dependsOn("fail")
+allprojects {
+    sourceSets.all { SourceSet set ->
+        Task fail = tasks.create(set.getTaskName("fail", ""), Fail, {
+            getSource().from(set.output)
+            getOutput().set(project.layout.buildDirectory.file("addedAndRemoved/${set.name}"))
+        })
+        assemble.dependsOn(fail)
+    }
+}
 
 abstract class Fail extends DefaultTask {
 

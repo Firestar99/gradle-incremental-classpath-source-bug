@@ -1,2 +1,3 @@
 rootProject.name = 'gradle-incremental-classpath-source-bug'
 
+include 'sub'
